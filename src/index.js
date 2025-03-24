@@ -13,4 +13,5 @@ const globalCompositor = new Compositor(
 	new Vec(canvas.width, canvas.height),
 );
 
+globalCompositor.dirty = true;
 globalCompositor.composite();

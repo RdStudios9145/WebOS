@@ -93,31 +93,17 @@ class Compositor {
 			return;
 		}
 
-		setTimeout(
-			() => globalCompositor.composite(),
-			Math.max(1000 / this.targetFPS - this.deltaTime, 1),
-		);
 		let renderTime = Date.now();
 
-		if ((img.height > img.width && this.size.x > this.size.y) || false) {
-			let scalar = this.size.x / img.width;
-			this.ctx.drawImage(
-				img,
-				0,
-				(scalar * img.height - this.size.y) / -2,
-				this.size.x,
-				img.height * scalar,
-			);
-		} else if (img.width > img.height) {
-			let scalar = this.size.y / img.height;
-			this.ctx.drawImage(
-				img,
-				-(scalar * img.width - this.size.x) / 2,
-				0,
-				img.width * scalar,
-				this.size.y,
-			);
-		}
+		let scale = Math.max(this.size.x / img.width, this.size.y / img.height);
+
+		this.ctx.drawImage(
+			img,
+			(this.size.x - img.width * scale) / 2,
+			(this.size.y - img.height * scale) / 2,
+			img.width * scale,
+			img.height * scale,
+		);
 
 		for (let i = this.order.length - 1; i >= 0; --i) {
 			let w = this.getWindow(this.order[i]);
@@ -152,6 +138,11 @@ class Compositor {
 		}
 		this.dirty = false;
 		this.deltaTime = Date.now() - renderTime;
+
+		setTimeout(
+			() => globalCompositor.composite(),
+			Math.max(1000 / this.targetFPS - this.deltaTime, 1),
+		);
 
 		// FPS
 		// deltatime is in ms/frame, so 1/delta is frame/ms and 1000/delta is frame/s
