@@ -1,0 +1,42 @@
+<!doctype html>
+<html class="no-js" lang="">
+	<head>
+		<meta charset="utf-8" />
+		<meta http-equiv="x-ua-compatible" content="ie=edge" />
+		<title>WebOS</title>
+		<meta name="a basic window manager on the web" content="" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<!-- Place favicon.ico in the root directory -->
+
+		<style>
+			html, body, canvas {
+				width: 100%;
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<!--[if lt IE 8]>
+			<p class="browserupgrade">
+				You are using an <strong>outdated</strong> browser. Please
+				<a href="http://browsehappy.com/">upgrade your browser</a> to improve
+				your experience.
+			</p>
+		<![endif]-->
+
+		<canvas id="canvas"></canvas>
+		<image class="bkg" src="./bkg001.jpg">
+		<image class="bkg" src="./bkg002.jpg">
+		<image class="bkg" src="./bkg003">
+		<script src="src/vec.js"></script>
+		<script src="src/rect.js"></script>
+		<script src="src/window.js"></script>
+		<script src="src/compositor.js"></script>
+		<script src="src/index.js"></script>
+	</body>
+</html>
