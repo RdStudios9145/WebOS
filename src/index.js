@@ -8,10 +8,10 @@ canvas.height = document.documentElement.clientHeight;
 
 const imgs = document.querySelectorAll(".bkg");
 const img = imgs[Math.floor(Math.random() * imgs.length)];
-const globalCompositor = new Compositor(
-	c,
-	new Vec(canvas.width, canvas.height),
-);
+// const globalCompositor = new Compositor(
+// c,
+// new Vec(canvas.width, canvas.height),
+// );
 
-globalCompositor.dirty = true;
-globalCompositor.composite();
+const system = new System();
+registerSystemApps();

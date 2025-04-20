@@ -5,6 +5,7 @@ class Window {
 	id;
 	image_buffer;
 	headerless;
+	immoveable = false;
 	constructor(
 		name = "New Window",
 		pos = new Vec(500, 500),
@@ -18,5 +19,6 @@ class Window {
 		this.size = size;
 		this.id = id;
 		this.image_buffer = buffer;
+		this.headerless = headerless;
 	}
 }

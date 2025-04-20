@@ -2,6 +2,8 @@ class Compositor {
 	windows = [];
 	gifted_ids = [];
 	order = [];
+	alwaysOnTop = [];
+	headlessWindows = [];
 	image;
 	ctx;
 	dirty = true;
@@ -11,7 +13,6 @@ class Compositor {
 		textColor: "#fff",
 		font: "15px monospace",
 	};
-	bkg;
 	size;
 	isMouseDown = false;
 	draggingWindow = false;
@@ -27,9 +28,9 @@ class Compositor {
 		this.ctx = c;
 		this.size = size;
 
-		addEventListener("mousedown", (e) => globalCompositor.mousedown(e));
-		addEventListener("mouseup", (e) => globalCompositor.mouseup(e));
-		addEventListener("mousemove", (e) => globalCompositor.mousemove(e));
+		addEventListener("mousedown", (e) => this.mousedown(e));
+		addEventListener("mouseup", (e) => this.mouseup(e));
+		addEventListener("mousemove", (e) => this.mousemove(e));
 		addEventListener("contextmenu", (e) => e.preventDefault());
 	}
 
@@ -53,9 +54,23 @@ class Compositor {
 		const window = new Window(name, pos, size, headerless, id, buffer);
 
 		this.windows.push(window);
+
+		if (headerless) this.headlessWindows.unshift(id);
 		this.order.unshift(id);
+
 		this.dirty = true;
 		return window;
+	}
+
+	setAlwaysOnTop(id) {
+		const i = this.headlessWindows.indexOf(id);
+		if (i < 0) {
+			console.err("could not find window with ID:", id);
+			return -1;
+		}
+		this.headlessWindows.splice(i, 1);
+		this.alwaysOnTop.push(id);
+		this.dirty = true;
 	}
 
 	focusWindow(id) {
@@ -71,7 +86,7 @@ class Compositor {
 	renderHeader(w) {
 		let tl = new Vec(w.pos.x - w.size.x / 2, w.pos.y - w.size.y / 2);
 		let header = new Rect(
-			new Vec(w.pos.x + 1, w.pos.y - (w.size.y + this.header_height) / 2),
+			new Vec(w.pos.x, w.pos.y - (w.size.y + this.header_height) / 2),
 			new Vec(w.size.x + 2, this.header_height + 10),
 			5,
 		);
@@ -89,7 +104,7 @@ class Compositor {
 
 	composite() {
 		if (!this.dirty) {
-			setTimeout(() => globalCompositor.composite(), 1000 / this.targetFPS);
+			setTimeout(() => this.composite(), 1000 / this.targetFPS);
 			return;
 		}
 
@@ -105,8 +120,32 @@ class Compositor {
 			img.height * scale,
 		);
 
+		let drawHeadedWindow = (w) => {
+			this.ctx.lineWidth = 1;
+			new Rect(
+				new Vec(w.pos.x, w.pos.y - 5),
+				new Vec(w.size.x, w.size.y + 11),
+				5,
+				"stroke",
+			).draw(this.ctx);
+
+			this.renderHeader(w);
+
+			this.ctx.save();
+			new Rect(w.pos, w.size, [0, 0, 5, 5], "clip").draw(this.ctx);
+
+			this.ctx.putImageData(
+				w.image_buffer,
+				w.pos.x - w.size.x / 2,
+				w.pos.y - w.size.y / 2,
+			);
+
+			this.ctx.restore();
+		};
+
 		for (let i = this.order.length - 1; i >= 0; --i) {
 			let w = this.getWindow(this.order[i]);
+			if (this.alwaysOnTop.includes(this.order[i])) continue;
 			if (w.headerless)
 				this.ctx.putImageData(
 					w.image_buffer,
@@ -114,33 +153,26 @@ class Compositor {
 					w.pos.y - w.size.y / 2,
 				);
 			else {
-				this.ctx.lineWidth = 1;
-				new Rect(
-					new Vec(w.pos.x + 1, w.pos.y - 5),
-					new Vec(w.size.x, w.size.y + 11),
-					5,
-					"stroke",
-				).draw(this.ctx);
-
-				this.renderHeader(w);
-
-				this.ctx.save();
-				new Rect(w.pos, w.size, [0, 0, 5, 5], "clip").draw(this.ctx);
-
-				this.ctx.putImageData(
-					w.image_buffer,
-					w.pos.x - w.size.x / 2 + 1,
-					w.pos.y - w.size.y / 2,
-				);
-
-				this.ctx.restore();
+				drawHeadedWindow(w);
 			}
 		}
+
+		for (let i = this.alwaysOnTop.length - 1; i >= 0; --i) {
+			let w = this.getWindow(this.alwaysOnTop[i]);
+			if (w.headerless)
+				this.ctx.putImageData(
+					w.image_buffer,
+					w.pos.x - w.size.x / 2,
+					w.pos.y - w.size.y / 2,
+				);
+			else drawHeadedWindow(w);
+		}
+
 		this.dirty = false;
 		this.deltaTime = Date.now() - renderTime;
 
 		setTimeout(
-			() => globalCompositor.composite(),
+			() => this.composite(),
 			Math.max(1000 / this.targetFPS - this.deltaTime, 1),
 		);
 
@@ -148,7 +180,11 @@ class Compositor {
 		// deltatime is in ms/frame, so 1/delta is frame/ms and 1000/delta is frame/s
 		this.ctx.font = "15px monospace";
 		this.ctx.fontStyle = "black";
-		this.ctx.fillText(`FPS: ${1000 / Math.max(this.deltaTime, 1)}`, 10, 20);
+		this.ctx.fillText(
+			`FPS: ${Math.min(1000 / Math.max(this.deltaTime, 1), 30)}`,
+			10,
+			20,
+		);
 	}
 
 	mousedown(e) {
@@ -171,7 +207,8 @@ class Compositor {
 			) {
 				this.focusWindow(this.order[i]);
 				this.dirty = true;
-				if (e.ctrlKey) {
+				// Ctrl to move and resize, but only if were allowed to
+				if (e.ctrlKey && !w.immoveable) {
 					if (e.button == 0) this.draggingWindow = true;
 					else if (e.button == 2)
 						this.resizingWindow = { v: e.clientX >= w.pos.x };
@@ -179,8 +216,11 @@ class Compositor {
 				return;
 			}
 
-			// if it is inside the header, focus it and set it to dragging
+			// if it is inside the header and it has a header,
+			// focus it and set it to dragging
 			if (
+				!w.immoveable &&
+				!w.headerless &&
 				e.button == 0 &&
 				e.clientY >= w.pos.y - w.size.y / 2 - this.header_height &&
 				e.clientY <= w.pos.y - w.size.y / 2
