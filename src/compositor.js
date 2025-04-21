@@ -119,7 +119,29 @@ class Compositor {
 			img.width * scale,
 			img.height * scale,
 		);
+		let buffer = this.ctx.getImageData(0, 0, this.size.x, this.size.y);
 
+		let copyWindowBuffer = (w, buffer) => {
+			let topLeft =
+				4 * (this.size.x * (w.pos.y - w.size.y / 2) + w.pos.x - w.size.x / 2);
+			let stride = 4 * this.size.x;
+
+			for (let y = 0; y < 4 * w.size.y; y += 4) {
+				for (let x = 0; x < 4 * w.size.x; x += 4) {
+					let bi = topLeft + (y * stride) / 4 + x;
+					let trans = w.image_buffer.data[y * w.size.x + x + 3];
+					buffer[bi + 0] =
+						w.image_buffer.data[y * w.size.x + x + 0] * (trans / 255) +
+						buffer[bi + 0] * (1 - trans / 255);
+					buffer[bi + 1] =
+						w.image_buffer.data[y * w.size.x + x + 1] * (trans / 255) +
+						buffer[bi + 1] * (1 - trans / 255);
+					buffer[bi + 2] =
+						w.image_buffer.data[y * w.size.x + x + 2] * (trans / 255) +
+						buffer[bi + 2] * (1 - trans / 255);
+				}
+			}
+		};
 		let drawHeadedWindow = (w) => {
 			this.ctx.lineWidth = 1;
 			new Rect(
@@ -146,12 +168,7 @@ class Compositor {
 		for (let i = this.order.length - 1; i >= 0; --i) {
 			let w = this.getWindow(this.order[i]);
 			if (this.alwaysOnTop.includes(this.order[i])) continue;
-			if (w.headerless)
-				this.ctx.putImageData(
-					w.image_buffer,
-					w.pos.x - w.size.x / 2,
-					w.pos.y - w.size.y / 2,
-				);
+			if (w.headerless) copyWindowBuffer(w, buffer.data);
 			else {
 				drawHeadedWindow(w);
 			}
@@ -159,14 +176,11 @@ class Compositor {
 
 		for (let i = this.alwaysOnTop.length - 1; i >= 0; --i) {
 			let w = this.getWindow(this.alwaysOnTop[i]);
-			if (w.headerless)
-				this.ctx.putImageData(
-					w.image_buffer,
-					w.pos.x - w.size.x / 2,
-					w.pos.y - w.size.y / 2,
-				);
+			if (w.headerless) copyWindowBuffer(w, buffer.data);
 			else drawHeadedWindow(w);
 		}
+
+		this.ctx.putImageData(buffer, 0, 0);
 
 		this.dirty = false;
 		this.deltaTime = Date.now() - renderTime;

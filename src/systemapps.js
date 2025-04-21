@@ -26,7 +26,8 @@ const registerSystemApps = () => {
 				this.tbWindow.image_buffer.data[i + 0] = 190;
 				this.tbWindow.image_buffer.data[i + 1] = 0;
 				this.tbWindow.image_buffer.data[i + 2] = 210;
-				this.tbWindow.image_buffer.data[i + 3] = (i / system.width / 4) * 255;
+				this.tbWindow.image_buffer.data[i + 3] =
+					((i % (4 * system.width)) / system.width / 4) * 255;
 			}
 			system.dirty();
 		}
